@@ -3,4 +3,3 @@ flask-cors
 opengradient
 web3
 python-dotenv
-streamlit
