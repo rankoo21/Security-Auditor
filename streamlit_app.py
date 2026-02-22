@@ -107,21 +107,21 @@ with col1:
     st.markdown('<div class="panel">', unsafe_allow_html=True)
     st.markdown('<div class="panel-title">📝 Source Code</div>', unsafe_allow_html=True)
     
-    # Example buttons
+    # Example buttons loading logic
     cols_ex = st.columns(3)
     if cols_ex[0].button("ERC-20 Example", key="ex1"): 
-        st.session_state.code = EXAMPLES["ERC-20 Example"]
+        st.session_state.editor = EXAMPLES["ERC-20 Example"]
         st.rerun()
     if cols_ex[1].button("Vulnerable Code", key="ex2"): 
-        st.session_state.code = EXAMPLES["Vulnerable Code"]
+        st.session_state.editor = EXAMPLES["Vulnerable Code"]
         st.rerun()
     if cols_ex[2].button("Reentrancy", key="ex3"): 
-        st.session_state.code = EXAMPLES["Reentrancy"]
+        st.session_state.editor = EXAMPLES["Reentrancy"]
         st.rerun()
 
-    input_code = st.text_area("c", height=420, key="editor", value=st.session_state.get("code", ""), label_visibility="collapsed")
-    st.session_state.code = input_code
-
+    # The editor itself (bound to st.session_state.editor)
+    input_code = st.text_area("c", height=420, key="editor", label_visibility="collapsed")
+    
     st.markdown('<div class="btn-audit-main">', unsafe_allow_html=True)
     if st.button("🔍 Start Security Analysis", key="run_btn"):
         if not input_code:
