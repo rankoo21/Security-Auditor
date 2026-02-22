@@ -54,13 +54,80 @@ with st.sidebar:
         st.error(f"Error: {e}")
         st.stop()
 
+# Example Contracts
+EXAMPLES = {
+    "erc20": """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SimpleToken {
+    string public name = "SimpleToken";
+    string public symbol = "STK";
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+
+    constructor(uint256 _initialSupply) {
+        totalSupply = _initialSupply * 10**decimals;
+        balanceOf[msg.sender] = totalSupply;
+    }
+
+    function transfer(address _to, uint256 _value) public returns (bool success) {
+        require(balanceOf[msg.sender] >= _value);
+        balanceOf[msg.sender] -= _value;
+        balanceOf[_to] += _value;
+        return true;
+    }
+}""",
+    "vulnerable": """// SPDX-License-Identifier: MIT
+pragma solidity ^0.7.0;
+
+contract VulnerableVault {
+    mapping(address => uint256) public balances;
+    address public owner;
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function deposit() public payable {
+        balances[msg.sender] += msg.value;
+    }
+
+    function withdraw(uint256 amount) public {
+        require(balances[msg.sender] >= amount);
+        // Vulnerable: sends ETH before updating state
+        (bool ok, ) = msg.sender.call{value: amount}("");
+        require(ok);
+        balances[msg.sender] -= amount;
+    }
+
+    function transferOwnership(address newOwner) public {
+        owner = newOwner; // No access control!
+    }
+}"""
+}
+
 # Layout
 col1, col2 = st.columns([1, 1])
 
 with col1:
     st.subheader("📝 Source Code")
-    code = st.text_area("Paste Solidity Code Here:", height=400, placeholder="pragma solidity ^0.8.0; ...")
     
+    # Example buttons
+    cols_ex = st.columns(len(EXAMPLES))
+    for i, (name, content) in enumerate(EXAMPLES.items()):
+        if cols_ex[i].button(f"Load {name.upper()}"):
+            st.session_state.code_input = content
+
+    code = st.text_area("Paste Solidity Code Here:", 
+                        height=400, 
+                        key="code_area",
+                        value=st.session_state.get("code_input", ""),
+                        placeholder="pragma solidity ^0.8.0; ...")
+    
+    # Update session state when typing
+    st.session_state.code_input = code
+
     if st.button("🔍 Start Security Audit"):
         if not code:
             st.warning("Please enter code first!")
