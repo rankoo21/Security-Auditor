@@ -69,11 +69,11 @@ st.markdown(f"""
         transition: all 0.2s !important;
     }}
     
-    button[kind="secondary"] {
+    button[kind="secondary"] {{
         background: rgba(255,255,255,0.05) !important; color: var(--muted) !important; 
         border: 1px solid rgba(255,255,255,0.1) !important; font-size: 0.72rem !important;
         border-radius: 99px !important; padding: 5px 15px !important; opacity: 0.8;
-    }
+    }}
     .btn-audit-main button {{
         background: linear-gradient(135deg, #3b82f6, #22d3ee) !important;
         color: white !important; border: none !important; width: 100% !important;
