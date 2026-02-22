@@ -28,10 +28,19 @@ st.markdown("Powered by **OpenGradient Trusted Execution Environment (TEE)**")
 # Sidebar for Wallet Info
 with st.sidebar:
     st.header("🔗 System Info")
-    pk = st.secrets.get("OG_PRIVATE_KEY") or os.environ.get("OG_PRIVATE_KEY")
+    
+    # Safer secret retrieval
+    try:
+        if "OG_PRIVATE_KEY" in st.secrets:
+            pk = st.secrets["OG_PRIVATE_KEY"]
+        else:
+            pk = os.environ.get("OG_PRIVATE_KEY")
+    except:
+        pk = None
     
     if not pk:
-        st.error("Missing OG_PRIVATE_KEY in Secrets!")
+        st.error("🔑 **OG_PRIVATE_KEY** not found!")
+        st.info("Go to **App Settings > Secrets** and add: `OG_PRIVATE_KEY = 'your_key_here'`")
         st.stop()
         
     try:
