@@ -31,60 +31,69 @@ else:
     st.error("🔑 Private Key missing in Secrets!")
     st.stop()
 
-# ─── THE STYLE OVERHAUL ───
+# ─── PREMIUM CSS OVERRIDE ───
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap');
 
     .stApp {{ background: #04060d; color: #d4dff7; font-family: 'Outfit', sans-serif; }}
-    [data-testid="stHeader"] {{ background: transparent; }}
+    [data-testid="stHeader"] {{ background: transparent; visibility: hidden; }}
     
     .main-title {{
-        text-align: center; font-size: 3.2rem; font-weight: 800; margin-top: 2rem;
+        text-align: center; font-size: 3.5rem; font-weight: 800; margin-top: 1rem;
         background: linear-gradient(135deg, #60a5fa 0%, #22d3ee 50%, #10b981 100%);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.3));
+        filter: drop-shadow(0 4px 20px rgba(59, 130, 246, 0.4));
     }}
     .status-bar {{
-        display: flex; justify-content: center; gap: 30px; 
+        display: flex; justify-content: center; gap: 40px; 
         background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 12px; padding: 10px 20px; margin: 1.5rem auto 2.5rem; max-width: 900px;
-        font-size: 0.75rem; color: #6b7fa8; backdrop-filter: blur(10px);
+        border-radius: 14px; padding: 12px 25px; margin: 1.5rem auto 3rem; max-width: 900px;
+        font-size: 0.8rem; color: #6b7fa8; backdrop-filter: blur(12px);
     }}
     .status-bar b {{ color: #22d3ee; margin-left: 5px; font-family: 'JetBrains Mono'; }}
 
+    /* Panels UI */
     .panel {{
         background: rgba(10, 14, 28, 0.9);
         border: 1px solid rgba(60, 130, 255, 0.2);
-        border-radius: 20px; padding: 25px; height: 100%;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        border-radius: 20px; padding: 30px; height: 100%;
+        box-shadow: 0 15px 50px rgba(0,0,0,0.5);
     }}
-    .panel-title {{ font-weight: 700; font-size: 1rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }}
+    .panel-title {{ font-weight: 800; font-size: 1.1rem; margin-bottom: 25px; display: flex; align-items: center; gap: 12px; color: #fff; }}
 
+    /* Editor Styling */
     div[data-baseweb="textarea"] {{ background: #080c18 !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 12px !important; }}
-    textarea {{ color: #d4dff7 !important; font-family: 'JetBrains Mono' !important; font-size: 0.85rem !important; }}
+    textarea {{ color: #d4dff7 !important; font-family: 'JetBrains Mono' !important; font-size: 0.9rem !important; line-height: 1.6 !important; }}
     
+    /* Buttons UI */
     .stButton>button {{
         border-radius: 12px !important;
-        transition: all 0.2s !important;
+        transition: all 0.3s ease !important;
+        font-family: 'Outfit', sans-serif !important;
     }}
     
+    /* Small Pills */
     button[kind="secondary"] {{
-        background: rgba(255,255,255,0.05) !important; color: var(--muted) !important; 
-        border: 1px solid rgba(255,255,255,0.1) !important; font-size: 0.72rem !important;
-        border-radius: 99px !important; padding: 5px 15px !important; opacity: 0.8;
+        background: rgba(255,255,255,0.05) !important; color: #6b7fa8 !important; 
+        border: 1px solid rgba(255,255,255,0.1) !important; font-size: 0.75rem !important;
+        border-radius: 99px !important; padding: 6px 18px !important; margin-bottom: 10px !important;
     }}
+    button[kind="secondary"]:hover {{ background: rgba(34, 211, 238, 0.1) !important; color: #22d3ee !important; border-color: #22d3ee !important; transform: scale(1.05); }}
+
+    /* Audit Button */
     .btn-audit-main button {{
         background: linear-gradient(135deg, #3b82f6, #22d3ee) !important;
         color: white !important; border: none !important; width: 100% !important;
-        height: 3.5rem !important; font-size: 1.1rem !important; font-weight: 700 !important;
-        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4) !important; margin-top: 20px !important;
+        height: 3.8rem !important; font-size: 1.2rem !important; font-weight: 800 !important;
+        box-shadow: 0 6px 25px rgba(59, 130, 246, 0.4) !important; margin-top: 25px !important;
+        text-transform: uppercase; letter-spacing: 1px;
     }}
-    .btn-audit-main button:hover {{ transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59, 130, 246, 0.6) !important; }}
+    .btn-audit-main button:hover {{ transform: translateY(-3px); box-shadow: 0 10px 35px rgba(59, 130, 246, 0.6) !important; }}
 </style>
 
 <div class="main-title">Security Auditor</div>
-<div style="text-align:center; color:#6b7fa8; font-size:1rem; margin-top:-10px;">🛡️ AI-powered auditor on OpenGradient TEE</div>
+<div style="text-align:center; color:#6b7fa8; font-size:1.1rem; margin-top:-12px; margin-bottom:1rem;">🛡️ AI-powered auditor on OpenGradient TEE</div>
 
 <div class="status-bar">
     <div>Model: <b>GEMINI_2_0_FLASH</b></div>
@@ -94,13 +103,14 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ─── DATA & EXAMPLES (FIXED SYNTAX) ───
+# ─── DATA & EXAMPLES ───
 EXAMPLES = {
-    "ERC-20 Example": "// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.20;\\nimport \\\"@openzeppelin/contracts/token/ERC20/ERC20.sol\\\";\\n\\ncontract MyToken is ERC20 {\\n    constructor() ERC20(\\\"RankoToken\\\", \\\"RNK\\\") {\\n        _mint(msg.sender, 1000000 * 10**18);\\n    }\\n}",
-    "Vulnerable Code": "// SPDX-License-Identifier: MIT\\npragma solidity ^0.7.0;\\n\\ncontract Vulnerable {\\n    mapping(address => uint256) public balances;\\n    function withdraw(uint256 amount) public {\\n        require(balances[msg.sender] >= amount);\\n        (bool ok, ) = msg.sender.call{value: amount}(\\\"\\\");\\n        require(ok);\\n        balances[msg.sender] -= amount;\\n    }\\n}",
-    "Reentrancy": "// Reentrancy example\\npragma solidity ^0.8.0;\\n\\ncontract Bank {\\n    mapping(address => uint) public balances;\\n    function withdraw() public {\\n        uint bal = balances[msg.sender];\\n        require(bal > 0);\\n        (bool sent,) = msg.sender.call{value: bal}(\\\"\\\");\\n        require(sent);\\n        balances[msg.sender] = 0;\\n    }\\n}"
+    "ERC-20 Example": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\nimport \"@openzeppelin/contracts/token/ERC20/ERC20.sol\";\n\ncontract MyToken is ERC20 {\n    constructor() ERC20(\"RankoToken\", \"RNK\") {\n        _mint(msg.sender, 1000000 * 10**18);\n    }\n}",
+    "Vulnerable Code": "// SPDX-License-Identifier: MIT\npragma solidity ^0.7.0;\n\ncontract Vulnerable {\n    mapping(address => uint256) public balances;\n    function withdraw(uint256 amount) public {\n        require(balances[msg.sender] >= amount);\n        (bool ok, ) = msg.sender.call{value: amount}(\"\");\n        require(ok);\n        balances[msg.sender] -= amount;\n    }\n}",
+    "Reentrancy": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract Bank {\n    mapping(address => uint) public balances;\n    function withdraw() public {\n        uint bal = balances[msg.sender];\n        require(bal > 0);\n        (bool sent,) = msg.sender.call{value: bal}(\"\");\n        require(sent);\n        balances[msg.sender] = 0;\n    }\n}"
 }
 
+# ─── MAIN APP GRID ───
 col1, col2 = st.columns(2, gap="large")
 
 with col1:
@@ -115,12 +125,12 @@ with col1:
     if cols_ex[1].button("Vulnerable Code", key="ex2"): 
         st.session_state.editor = EXAMPLES["Vulnerable Code"]
         st.rerun()
-    if cols_ex[2].button("Reentrancy", key="ex3"): 
+    if cols_ex[2].button("Reentrancy Example", key="ex3"): 
         st.session_state.editor = EXAMPLES["Reentrancy"]
         st.rerun()
 
     # The editor itself (bound to st.session_state.editor)
-    input_code = st.text_area("c", height=420, key="editor", label_visibility="collapsed")
+    input_code = st.text_area("c", height=450, key="editor", label_visibility="collapsed")
     
     st.markdown('<div class="btn-audit-main">', unsafe_allow_html=True)
     if st.button("🔍 Start Security Analysis", key="run_btn"):
@@ -130,7 +140,7 @@ with col1:
             with st.spinner("TEE Analysis in progress..."):
                 try:
                     p = "Analyze Solidity for vulnerabilities. Return ONLY raw JSON. Format: {summary, risk_score, vulnerabilities:[{title, severity, description, recommendation}]}"
-                    m = [{"role":"system","content":p}, {"role":"user","content":f"Audit this:\\n{input_code}"}]
+                    m = [{"role":"system","content":p}, {"role":"user","content":f"Audit this:\n{input_code}"}]
                     r = client.llm.chat(model=og.TEE_LLM.GEMINI_2_0_FLASH, messages=m, max_tokens=1000, x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH)
                     raw_out = r.chat_output.get("content", "")
                     if "```json" in raw_out: raw_out = raw_out.split("```json")[1].split("```")[0]
@@ -155,26 +165,36 @@ with col2:
         s_color = "#ef4444" if s_val > 70 else "#f97316" if s_val > 40 else "#10b981"
         
         st.markdown(f"""
-        <div style="background:rgba(0,0,0,0.3); border-radius:15px; padding:30px; text-align:center; border:1px solid rgba(255,255,255,0.05); margin-bottom:1.5rem;">
-            <div style="font-size:0.8rem; color:#6b7fa8; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">Risk Score</div>
-            <div style="font-size:4rem; font-weight:800; color:{s_color}; line-height:1;">{s_val}</div>
-            <div style="font-size:0.95rem; margin-top:20px; line-height:1.6;">{aud.get('summary','')}</div>
+        <div style="background:rgba(0,0,0,0.3); border-radius:18px; padding:35px; text-align:center; border:1px solid rgba(255,255,255,0.05); margin-bottom:2rem;">
+            <div style="font-size:0.85rem; color:#6b7fa8; margin-bottom:12px; text-transform:uppercase; letter-spacing:1.5px;">Security Risk Score</div>
+            <div style="font-size:4.5rem; font-weight:800; color:{s_color}; line-height:1;">{s_val}</div>
+            <div style="font-size:1.05rem; margin-top:25px; line-height:1.7;">{aud.get('summary','')}</div>
         </div>
         """, unsafe_allow_html=True)
         
+        # Findings list
         for v in aud.get('vulnerabilities', []):
+            sev = v.get('severity', 'Low').upper()
+            scol = "#ef4444" if sev == "CRITICAL" else "#f97316" if sev == "HIGH" else "#f59e0b"
             with st.expander(f"⚠️ {v.get('title','Finding')}"):
-                st.markdown(f"<p style='font-size:0.85rem;'>{v.get('description','')}</p>", unsafe_allow_html=True)
-                st.markdown(f"<div style='background:rgba(34,211,238,0.05); padding:12px; border-radius:10px; border-left:3px solid #22d3ee; font-size:0.85rem; margin-top:10px;'>💡 <b>Recommendation:</b> {v.get('recommendation','')}</div>", unsafe_allow_html=True)
+                st.markdown(f"<span style='color:{scol}; font-weight:bold; font-size:0.75rem;'>SEVERITY: {sev}</span>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size:0.92rem; margin-top:10px;'>{v.get('description','')}</p>", unsafe_allow_html=True)
+                st.markdown(f"<div style='background:rgba(34,211,238,0.06); padding:15px; border-radius:12px; border-left:4px solid #22d3ee; font-size:0.9rem; margin-top:12px;'><b>💡 Recommendation:</b><br>{v.get('recommendation','')}</div>", unsafe_allow_html=True)
                 
         if st.session_state.get("tx_h"):
-            st.markdown(f'<div style="text-align:center; margin-top:20px;"><a href="https://sepolia.basescan.org/tx/{st.session_state.tx_h}" target="_blank" style="color:#22d3ee; font-size:0.8rem; text-decoration:none; padding:10px 20px; border:1px solid rgba(34,211,238,0.2); border-radius:12px;">🔗 View On-Chain Proof</a></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="text-align:center; margin-top:25px;"><a href="https://sepolia.basescan.org/tx/{st.session_state.tx_h}" target="_blank" style="color:#22d3ee; font-size:0.85rem; text-decoration:none; padding:12px 25px; border:1px solid rgba(34,211,238,0.3); border-radius:12px; background:rgba(34,211,238,0.05);">🔗 View On-Chain Proof ↗</a></div>', unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div style="text-align:center; padding-top:120px; color:#6b7fa8; opacity:0.3;">
-            <div style="font-size:4.5rem; margin-bottom:20px;">🛡️</div>
-            <div style="font-weight:600;">System Ready</div>
-            <div style="font-size:0.75rem; margin-top:10px;">Paste code to generate report</div>
+        <div style="text-align:center; padding-top:150px; color:#6b7fa8; opacity:0.3;">
+            <div style="font-size:5rem; margin-bottom:25px;">🛡️</div>
+            <div style="font-weight:800; font-size:1.2rem; letter-spacing:1px;">Ready for Analysis</div>
+            <div style="font-size:0.85rem; margin-top:12px;">Paste code to generate persistent report</div>
         </div>
         """, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("""
+<div style="text-align:center; margin-top:6rem; color:#6b7fa8; font-size:0.75rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:30px; opacity:0.8;">
+    © 2026 AI Security Auditor • Powered by <b>OpenGradient TEE</b> Infrastructure • Base Sepolia Network
+</div>
+""", unsafe_allow_html=True)
