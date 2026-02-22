@@ -104,9 +104,15 @@ with col1:
     
     # Example buttons
     cols_ex = st.columns(3)
-    if cols_ex[0].button("ERC-20", key="ex1"): st.session_state.code = EXAMPLES["ERC-20 Example"]
-    if cols_ex[1].button("Vulnerable", key="ex2"): st.session_state.code = EXAMPLES["Vulnerable Code"]
-    if cols_ex[2].button("Reentrancy", key="ex3"): st.session_state.code = EXAMPLES["Reentrancy"]
+    if cols_ex[0].button("ERC-20", key="ex1"): 
+        st.session_state.code = EXAMPLES["ERC-20 Example"]
+        st.rerun()
+    if cols_ex[1].button("Vulnerable", key="ex2"): 
+        st.session_state.code = EXAMPLES["Vulnerable Code"]
+        st.rerun()
+    if cols_ex[2].button("Reentrancy", key="ex3"): 
+        st.session_state.code = EXAMPLES["Reentrancy"]
+        st.rerun()
 
     input_code = st.text_area("c", height=420, key="editor", value=st.session_state.get("code", ""), label_visibility="collapsed")
     st.session_state.code = input_code
