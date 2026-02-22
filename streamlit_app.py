@@ -69,6 +69,11 @@ st.markdown(f"""
         transition: all 0.2s !important;
     }}
     
+    button[kind="secondary"] {
+        background: rgba(255,255,255,0.05) !important; color: var(--muted) !important; 
+        border: 1px solid rgba(255,255,255,0.1) !important; font-size: 0.72rem !important;
+        border-radius: 99px !important; padding: 5px 15px !important; opacity: 0.8;
+    }
     .btn-audit-main button {{
         background: linear-gradient(135deg, #3b82f6, #22d3ee) !important;
         color: white !important; border: none !important; width: 100% !important;
@@ -104,10 +109,10 @@ with col1:
     
     # Example buttons
     cols_ex = st.columns(3)
-    if cols_ex[0].button("ERC-20", key="ex1"): 
+    if cols_ex[0].button("ERC-20 Example", key="ex1"): 
         st.session_state.code = EXAMPLES["ERC-20 Example"]
         st.rerun()
-    if cols_ex[1].button("Vulnerable", key="ex2"): 
+    if cols_ex[1].button("Vulnerable Code", key="ex2"): 
         st.session_state.code = EXAMPLES["Vulnerable Code"]
         st.rerun()
     if cols_ex[2].button("Reentrancy", key="ex3"): 
