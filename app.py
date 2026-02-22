@@ -1,4 +1,4 @@
-import os, json, hashlib, time
+import os, json, hashlib, time, re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import opengradient as og
@@ -56,6 +56,32 @@ def status():
         "status": "ready" if PRIVATE_KEY else "missing_key"
     })
 
+def repair_json(s):
+    """Simple helper to close truncated JSON strings/objects."""
+    s = s.strip()
+    # Count open/close braces
+    open_b = s.count('{')
+    close_b = s.count('}')
+    if open_b > close_b:
+        s += '}' * (open_b - close_b)
+    
+    # Check if inside an array
+    open_a = s.count('[')
+    close_a = s.count(']')
+    if open_a > close_a:
+        # This is a bit complex, but usually it's inside a list of vulnerabilities
+        # We try to close the current object if needed, then close the array
+        if s.endswith('}') or s.strip().endswith('}'):
+            s += ']'
+        else:
+            s += '}]' # Close object and array
+            
+    # Final check: if still missing the root closing brace
+    if s.count('{') > s.count('}'):
+        s += '}'
+        
+    return s
+
 @app.route("/api/audit", methods=["POST"])
 def audit():
     data = request.get_json(force=True) or {}
@@ -69,18 +95,20 @@ def audit():
         return jsonify({"success": False, "error": "SDK not initialized. Set OG_PRIVATE_KEY."}), 500
 
     try:
-        p = "Audit this Solidity contract. Return ONLY valid JSON with keys: {summary, risk_score, vulnerabilities: [{title, severity, description, recommendation}]}. No other text."
+        # Prompting for a more compact response to avoid truncation
+        p = "Audit this contract. Return ONLY a concise JSON (max 5 findings) with keys: {summary, risk_score, vulnerabilities:[{title, severity, description, recommendation}]}"
+        
         result = client.llm.chat(
             model=og.TEE_LLM.GEMINI_2_0_FLASH,
             messages=[{"role": "system", "content": p}, {"role": "user", "content": code}],
-            max_tokens=2048,
+            max_tokens=1500, # Increased but kept safe
             temperature=0.1,
             x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
         )
         
         raw_output = result.chat_output.get("content", "").strip()
         
-        # Robust JSON extraction
+        # Extract JSON from potential markdown
         clean_json = raw_output
         if "```json" in clean_json:
             clean_json = clean_json.split("```json")[1].split("```")[0]
@@ -89,20 +117,24 @@ def audit():
             
         clean_json = clean_json.strip()
         
+        # Try PARSING
         try:
             parsed = json.loads(clean_json)
         except json.JSONDecodeError:
-            # Try to fix truncated JSON if possible or return raw with error
-            import re
-            # Simple attempt to find the first { and last }
-            match = re.search(r'(\{.*\})', clean_json, re.DOTALL)
-            if match:
-                try:
-                    parsed = json.loads(match.group(1))
-                except:
-                    raise Exception("AI returned malformed JSON. Please try again.")
-            else:
-                raise Exception("Could not find valid JSON in AI response.")
+            # TRY REPAIRING
+            try:
+                repaired = repair_json(clean_json)
+                parsed = json.loads(repaired)
+            except:
+                # If still fails, try regex extraction
+                match = re.search(r'(\{.*\})', clean_json, re.DOTALL)
+                if match:
+                    try:
+                        parsed = json.loads(repair_json(match.group(1)))
+                    except:
+                        raise Exception("AI response truncated too early. Please try a smaller code snippet.")
+                else:
+                    raise Exception("Invalid response format from AI.")
 
         parsed["payment_hash"] = getattr(result, "payment_hash", None)
         return jsonify({"success": True, "audit": parsed})
