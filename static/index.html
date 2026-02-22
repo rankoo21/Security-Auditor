@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🛡️ Smart Contract Auditor — OpenGradient</title>
+    <meta name="description"
+        content="AI-powered smart contract security auditor on blockchain. Paste Solidity code and get a verified security report." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --void: #04060d;
+            --deep: #080c18;
+            --card: rgba(10, 14, 28, 0.9);
+            --glass: rgba(40, 120, 255, 0.06);
+            --border: rgba(60, 130, 255, 0.2);
+            --blue1: #3b82f6;
+            --blue2: #60a5fa;
+            --cyan: #22d3ee;
+            --green: #10b981;
+            --gold: #f59e0b;
+            --orange: #f97316;
+            --red: #ef4444;
+            --pink: #ec4899;
+            --purple: #a855f7;
+            --text: #d4dff7;
+            --muted: #6b7fa8;
+            --r: 0.75rem;
+            --r-lg: 1.25rem;
+        }
+
+        html,
+        body {
+            min-height: 100vh;
+            background: var(--void);
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* ── Animated background ── */
+        body::before {
+            content: '';
+            position: fixed;
+            width: 700px;
+            height: 700px;
+            border-radius: 50%;
+            filter: blur(100px);
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+            top: -300px;
+            right: -200px;
+            pointer-events: none;
+            z-index: 0;
+            animation: drift 20s ease-in-out infinite alternate;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            filter: blur(80px);
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+            bottom: -200px;
+            left: -150px;
+            pointer-events: none;
+            z-index: 0;
+            animation: drift 16s ease-in-out infinite alternate-reverse;
+        }
+
+        @keyframes drift {
+            from {
+                transform: translate(0, 0) scale(1);
+            }
+
+            to {
+                transform: translate(50px, 30px) scale(1.1);
+            }
+        }
+
+        #particles {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 1rem 4rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* ── Header ── */
+        .header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            padding: 0.3rem 1rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--cyan);
+            margin-bottom: 0.8rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .header-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.7);
+            }
+        }
+
+        .title {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 800;
+            line-height: 1.2;
+            background: linear-gradient(135deg, #60a5fa 0%, #22d3ee 50%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.3));
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: var(--muted);
+            margin-top: 0.4rem;
+            font-weight: 400;
+        }
+
+        /* ── Status bar ── */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 0.5rem 1rem;
+            font-size: 0.72rem;
+            color: var(--muted);
+            backdrop-filter: blur(12px);
+            margin-bottom: 1.5rem;
+            width: 100%;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .status-item .label {
+            opacity: 0.6;
+        }
+
+        .status-item .val {
+            font-weight: 600;
+            font-family: monospace;
+            direction: ltr;
+        }
+
+        .val.c {
+            color: var(--cyan);
+        }
+
+        .val.g {
+            color: var(--gold);
+        }
+
+        .val.b {
+            color: var(--blue2);
+        }
+
+        .val.gr {
+            color: var(--green);
+        }
+
+        /* ── Main layout ── */
+        .main-grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── Panel ── */
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02), 0 12px 40px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .panel-title .icon {
+            font-size: 1.1rem;
+        }
+
+        .panel-body {
+            padding: 1.2rem 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Code editor ── */
+        .code-area {
+            flex: 1;
+            min-height: 320px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--r);
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            line-height: 1.7;
+            color: var(--text);
+            resize: vertical;
+            direction: ltr;
+            text-align: left;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .code-area::placeholder {
+            color: rgba(107, 127, 168, 0.5);
+        }
+
+        .code-area:focus {
+            border-color: var(--blue1);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+        }
+
+        .code-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 0.8rem;
+            gap: 0.5rem;
+        }
+
+        .char-count {
+            font-size: 0.7rem;
+            color: var(--muted);
+            direction: ltr;
+        }
+
+        .btn-audit {
+            padding: 0.7rem 2rem;
+            background: linear-gradient(135deg, var(--blue1), var(--cyan));
+            border: none;
+            border-radius: var(--r);
+            color: white;
+            font-size: 0.92rem;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.35);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-audit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-audit:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* ── Loading state ── */
+        .loading-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(4, 6, 13, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 10;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--r-lg);
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .scanner {
+            width: 80px;
+            height: 80px;
+            border: 2px solid var(--blue1);
+            border-radius: 50%;
+            position: relative;
+            animation: scan-rotate 2s linear infinite;
+        }
+
+        .scanner::before {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border: 2px solid transparent;
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: scan-rotate 1.5s linear infinite reverse;
+        }
+
+        .scanner::after {
+            content: '🛡️';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            animation: none;
+        }
+
+        @keyframes scan-rotate {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            margin-top: 1.2rem;
+            color: var(--blue2);
+            font-size: 0.88rem;
+            font-weight: 600;
+            animation: fade-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes fade-pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* ── Results panel ── */
+        .results-placeholder {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            text-align: center;
+            gap: 0.8rem;
+            padding: 2rem;
+        }
+
+        .results-placeholder .big-icon {
+            font-size: 3rem;
+            opacity: 0.3;
+        }
+
+        .results-placeholder p {
+            font-size: 0.88rem;
+            line-height: 1.7;
+        }
+
+        .results-content {
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* ── Risk score ── */
+        .risk-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--r);
+            padding: 1.2rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .risk-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+
+        .risk-score-ring {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 0.6rem;
+            position: relative;
+        }
+
+        .risk-score-ring svg {
+            transform: rotate(-90deg);
+            width: 100px;
+            height: 100px;
+        }
+
+        .risk-score-ring .bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 6;
+        }
+
+        .risk-score-ring .fg {
+            fill: none;
+            stroke-width: 6;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s ease, stroke 0.5s;
+        }
+
+        .risk-number {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            font-weight: 800;
+            direction: ltr;
+        }
+
+        .risk-summary {
+            font-size: 0.85rem;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* ── Severity pills ── */
+        .severity-row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 0.8rem;
+        }
+
+        .sev-pill {
+            padding: 0.25rem 0.65rem;
+            border-radius: 99px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .sev-pill.critical {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: var(--red);
+        }
+
+        .sev-pill.high {
+            background: rgba(249, 115, 22, 0.12);
+            border: 1px solid rgba(249, 115, 22, 0.35);
+            color: var(--orange);
+        }
+
+        .sev-pill.medium {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: var(--gold);
+        }
+
+        .sev-pill.low {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: var(--blue2);
+        }
+
+        .sev-pill.info {
+            background: rgba(107, 127, 168, 0.1);
+            border: 1px solid rgba(107, 127, 168, 0.25);
+            color: var(--muted);
+        }
+
+        /* ── Vuln list ── */
+        .section-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--muted);
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .vuln-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--r);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            margin-bottom: 0.6rem;
+            animation: slideIn 0.3s ease both;
+            transition: border-color 0.2s;
+        }
+
+        .vuln-card:hover {
+            border-color: var(--border);
+        }
+
+        .vuln-card.critical {
+            border-left: 3px solid var(--red);
+        }
+
+        .vuln-card.high {
+            border-left: 3px solid var(--orange);
+        }
+
+        .vuln-card.medium {
+            border-left: 3px solid var(--gold);
+        }
+
+        .vuln-card.low {
+            border-left: 3px solid var(--blue2);
+        }
+
+        .vuln-card.info {
+            border-left: 3px solid var(--muted);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .vuln-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .vuln-title {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .vuln-id {
+            font-size: 0.65rem;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+            direction: ltr;
+        }
+
+        .vuln-desc {
+            font-size: 0.82rem;
+            color: var(--muted);
+            line-height: 1.7;
+            margin-bottom: 0.5rem;
+        }
+
+        .vuln-fix {
+            font-size: 0.78rem;
+            line-height: 1.6;
+            background: rgba(16, 185, 129, 0.06);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            border-radius: calc(var(--r) * 0.7);
+            padding: 0.6rem 0.8rem;
+            color: var(--green);
+        }
+
+        .vuln-fix-label {
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        /* ── Gas & Best practices ── */
+        .opt-card {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: calc(var(--r) * 0.7);
+            padding: 0.7rem 0.9rem;
+            margin-bottom: 0.4rem;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.8rem;
+        }
+
+        .opt-title {
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.15rem;
+        }
+
+        .opt-desc {
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .savings-badge {
+            display: inline-block;
+            padding: 0.1rem 0.4rem;
+            border-radius: 99px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            margin-left: 0.4rem;
+        }
+
+        .savings-badge.high {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--green);
+        }
+
+        .savings-badge.medium {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--gold);
+        }
+
+        .savings-badge.low {
+            background: rgba(107, 127, 168, 0.1);
+            color: var(--muted);
+        }
+
+        .bp-card {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.7rem;
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: calc(var(--r) * 0.6);
+            margin-bottom: 0.3rem;
+            font-size: 0.78rem;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .bp-icon {
+            font-size: 0.9rem;
+        }
+
+        .bp-title {
+            font-weight: 600;
+            color: var(--text);
+            flex: 1;
+        }
+
+        .bp-note {
+            color: var(--muted);
+            font-size: 0.72rem;
+        }
+
+        /* ── Tx hash ── */
+        .tx-row {
+            margin-top: 0.8rem;
+            padding-top: 0.8rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .tx-link {
+            font-size: 0.7rem;
+            color: var(--cyan);
+            text-decoration: none;
+            font-family: 'JetBrains Mono', monospace;
+            direction: ltr;
+            transition: color 0.2s;
+        }
+
+        .tx-link:hover {
+            color: var(--blue2);
+        }
+
+        /* ── Example buttons ── */
+        .examples-row {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.6rem;
+        }
+
+        .example-btn {
+            padding: 0.35rem 0.7rem;
+            border-radius: 99px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .example-btn:hover {
+            border-color: var(--border);
+            color: var(--text);
+            background: var(--glass);
+        }
+
+        /* ── Scrollable results ── */
+        .results-scroll {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 600px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(59, 130, 246, 0.2) transparent;
+        }
+
+        .results-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .results-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .results-scroll::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 99px;
+        }
+
+        /* ── Footer ── */
+        .footer {
+            margin-top: 2rem;
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-align: center;
+            line-height: 1.8;
+            width: 100%;
+        }
+
+        .footer a {
+            color: var(--blue2);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: var(--cyan);
+        }
+
+        /* ── Toast ── */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            backdrop-filter: blur(12px);
+            border-radius: var(--r);
+            padding: 0.8rem 1.5rem;
+            color: var(--red);
+            font-size: 0.85rem;
+            z-index: 100;
+            max-width: 90%;
+            text-align: center;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="particles"></canvas>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-badge">
+                <div class="dot"></div>
+                TEE Verification Active
+            </div>
+            <h1 class="title">Security Auditor</h1>
+            <p class="subtitle">AI-powered auditor on OpenGradient TEE</p>
+        </header>
+
+        <!-- Status bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="label">Model:</span>
+                <span class="val c" id="modelLabel">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Wallet:</span>
+                <span class="val g" id="walletLabel">—</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Balance:</span>
+                <span class="val b" id="balanceLabel">—</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Total Audits:</span>
+                <span class="val gr" id="auditCount">0</span>
+            </div>
+        </div>
+
+        <!-- Main grid -->
+        <div class="main-grid">
+
+            <!-- Left Side: Source Code -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">
+                        <span class="icon">📝</span> Source Code
+                    </h2>
+                    <div class="char-count" id="charCount">0 characters</div>
+                </div>
+                <div class="panel-body">
+                    <div class="examples-row">
+                        <button class="example-btn" onclick="loadExample('erc20')">ERC-20 Example</button>
+                        <button class="example-btn" onclick="loadExample('vulnerable')">Vulnerable Code</button>
+                        <button class="example-btn" onclick="loadExample('reentrancy')">Reentrancy</button>
+                    </div>
+                    <textarea class="code-area" id="codeInput" placeholder="Paste your Solidity contract here..."
+                        spellcheck="false"></textarea>
+                    <div class="code-footer">
+                        <button class="btn-audit" id="auditBtn" onclick="runAudit()">
+                            🔍 Start Analysis
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Reports -->
+            <div class="panel" style="position:relative">
+                <div class="panel-header">
+                    <h2 class="panel-title">
+                        <span class="icon">📊</span> Analysis Report
+                    </h2>
+                    <div class="char-count" id="auditId">—</div>
+                </div>
+                <div class="panel-body">
+                    <!-- Placeholder -->
+                    <div class="results-placeholder" id="resultsPlaceholder">
+                        <div class="big-icon">🛡️</div>
+                        <p>Paste Solidity code and click <b>"Start Analysis"</b><br>to get a comprehensive security
+                            report verified on-chain.</p>
+                    </div>
+
+                    <!-- Results -->
+                    <div class="results-content results-scroll" id="resultsContent">
+                        <!-- Loaded via JS -->
+                    </div>
+
+                    <!-- Loading overlay -->
+                    <div class="loading-overlay" id="loadingOverlay">
+                        <div class="scanner"></div>
+                        <div class="loading-text">Analyzing vulnerabilities...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /main-grid -->
+
+        <footer class="footer">
+            Powered by <a href="https://opengradient.ai" target="_blank">OpenGradient</a> Trusted Execution
+            Environment (TEE).
+            Each report is on-chain hash-verified, private, and tamper-proof.
+        </footer>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        /* ── Particles ── */
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        let W, H, pts = [];
+        function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+        resize(); addEventListener('resize', resize);
+        class P {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * W; this.y = Math.random() * H;
+                this.vx = (Math.random() - 0.5) * 0.25; this.vy = -Math.random() * 0.3 - 0.05;
+                this.r = Math.random() * 1.2 + 0.4;
+                this.life = 0; this.max = Math.random() * 250 + 100;
+                this.hue = [210, 190, 160, 270][Math.floor(Math.random() * 4)];
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.life++; if (this.life > this.max || this.y < 0) this.reset(); }
+            draw() {
+                const a = Math.sin(this.life / this.max * Math.PI) * 0.4;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${this.hue},70%,65%,${a})`; ctx.fill();
+            }
+        }
+        for (let i = 0; i < 60; i++) { const p = new P(); p.life = Math.random() * p.max; pts.push(p); }
+        function anim() { ctx.clearRect(0, 0, W, H); pts.forEach(p => { p.update(); p.draw() }); requestAnimationFrame(anim); }
+        anim();
+
+        /* ── Code examples ── */
+        const EXAMPLES = {
+            erc20: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract MyToken is ERC20, Ownable {
+    uint256 public constant MAX_SUPPLY = 1_000_000 * 1e18;
+
+    constructor() ERC20("MyToken", "MTK") Ownable(msg.sender) {
+        _mint(msg.sender, 100_000 * 1e18);
+    }
+
+    function mint(address to, uint256 amount) external onlyOwner {
+        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
+        _mint(to, amount);
+    }
+}`,
+
+            vuln: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.7.0;
+
+contract VulnerableVault {
+    mapping(address => uint256) public balances;
+    address public owner;
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function deposit() public payable {
+        balances[msg.sender] += msg.value;
+    }
+
+    function withdraw(uint256 amount) public {
+        require(balances[msg.sender] >= amount);
+        // Vulnerable: sends ETH before updating state
+        (bool ok, ) = msg.sender.call{value: amount}("");
+        require(ok);
+        balances[msg.sender] -= amount;
+    }
+
+    function transferOwnership(address newOwner) public {
+        // No access control!
+        owner = newOwner;
+    }
+
+    function emergencyDrain() public {
+        require(tx.origin == owner); // tx.origin vulnerability
+        payable(owner).transfer(address(this).balance);
+    }
+
+    function multiply(uint256 a, uint256 b) public pure returns (uint256) {
+        return a * b; // overflow in solidity < 0.8
+    }
+}`,
+
+            reentrancy: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract ReentrancyExample {
+    mapping(address => uint256) private userBalances;
+
+    function deposit() external payable {
+        userBalances[msg.sender] += msg.value;
+    }
+
+    function withdrawAll() external {
+        uint256 balance = userBalances[msg.sender];
+        require(balance > 0, "No balance");
+
+        // BAD: external call before state update
+        (bool success, ) = msg.sender.call{value: balance}("");
+        require(success, "Transfer failed");
+
+        // State update after external call = reentrancy!
+        userBalances[msg.sender] = 0;
+    }
+
+    function getBalance() external view returns (uint256) {
+        return userBalances[msg.sender];
+    }
+}`
+        };
+
+        function loadExample(name) {
+            document.getElementById('codeInput').value = EXAMPLES[name] || '';
+            updateCharCount();
+        }
+
+        /* ── Char count ── */
+        const codeInput = document.getElementById('codeInput');
+        codeInput.addEventListener('input', updateCharCount);
+        function updateCharCount() {
+            const n = codeInput.value.length;
+            document.getElementById('charCount').textContent = n.toLocaleString('en-US') + ' chars';
+        }
+
+        /* ── Toast ── */
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 4500);
+        }
+
+        /* ── Status ── */
+        async function loadStatus() {
+            try {
+                const r = await fetch('/api/status');
+                const d = await r.json();
+                document.getElementById('modelLabel').textContent = d.model || 'Unknown';
+                document.getElementById('walletLabel').textContent = d.wallet ? d.wallet.slice(0, 6) + '…' + d.wallet.slice(-4) : '—';
+                document.getElementById('balanceLabel').textContent = typeof d.balance === 'number' ? d.balance + ' OPG' : (d.balance || '—');
+                document.getElementById('auditCount').textContent = d.total_audits ?? 0;
+            } catch (e) {
+                document.getElementById('modelLabel').textContent = 'Offline';
+            }
+        }
+        loadStatus(); setInterval(loadStatus, 30000);
+
+        /* ── Run audit ── */
+        async function runAudit() {
+            const code = codeInput.value.trim();
+            if (!code) { showToast('Please paste Solidity code first'); return; }
+
+            const btn = document.getElementById('auditBtn');
+            btn.disabled = true;
+            document.getElementById('loadingOverlay').classList.add('show');
+            document.getElementById('resultsPlaceholder').style.display = 'none';
+            document.getElementById('resultsContent').style.display = 'none';
+
+            try {
+                const resp = await fetch('/api/audit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await resp.json();
+
+                if (!data.success) {
+                    showToast('Error: ' + (data.error || 'Unknown error'));
+                    document.getElementById('resultsPlaceholder').style.display = 'flex';
+                    return;
+                }
+
+                renderResults(data.audit);
+                loadStatus();
+
+            } catch (e) {
+                showToast('Network error: ' + e.message);
+                document.getElementById('resultsPlaceholder').style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+                document.getElementById('loadingOverlay').classList.remove('show');
+            }
+        }
+
+        /* ── Render results ── */
+        function renderResults(audit) {
+            const c = document.getElementById('resultsContent');
+            c.style.display = 'flex';
+            document.getElementById('auditId').textContent = audit.audit_id || '';
+
+            const score = audit.risk_score ?? 0;
+            const vulns = audit.vulnerabilities || [];
+            const gas = audit.gas_optimizations || [];
+            const bps = audit.best_practices || [];
+            const sevs = audit.severity_counts || {};
+
+            // Risk color
+            let riskColor = 'var(--green)';
+            let riskLabel = 'Safe';
+            if (score >= 80) { riskColor = 'var(--red)'; riskLabel = 'Critical'; }
+            else if (score >= 60) { riskColor = 'var(--orange)'; riskLabel = 'High'; }
+            else if (score >= 40) { riskColor = 'var(--gold)'; riskLabel = 'Medium'; }
+            else if (score >= 20) { riskColor = 'var(--blue2)'; riskLabel = 'Low'; }
+
+            const circ = 2 * Math.PI * 42;
+            const offset = circ - (score / 100) * circ;
+
+            let html = `
+    <div class="risk-card">
+      <div class="risk-label">Risk Level — ${riskLabel}</div>
+      <div class="risk-score-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="bg" cx="50" cy="50" r="42"/>
+          <circle class="fg" cx="50" cy="50" r="42"
+            stroke="${riskColor}"
+            stroke-dasharray="${circ}"
+            stroke-dashoffset="${offset}"/>
+        </svg>
+        <div class="risk-number" style="color:${riskColor}">${score}</div>
+      </div>
+      <div class="risk-summary">${esc(audit.summary || '')}</div>
+      <div class="severity-row">
+        ${sevs.critical ? `<span class="sev-pill critical">Critical: ${sevs.critical}</span>` : ''}
+        ${sevs.high ? `<span class="sev-pill high">High: ${sevs.high}</span>` : ''}
+        ${sevs.medium ? `<span class="sev-pill medium">Medium: ${sevs.medium}</span>` : ''}
+        ${sevs.low ? `<span class="sev-pill low">Low: ${sevs.low}</span>` : ''}
+        ${sevs.info ? `<span class="sev-pill info">Info: ${sevs.info}</span>` : ''}
+        ${vulns.length === 0 ? '<span class="sev-pill" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:var(--green)">✅ Secure</span>' : ''}
+      </div>
+    </div>`;
+
+            // Vulnerabilities
+            if (vulns.length > 0) {
+                html += `<div class="section-title">Security Vulnerabilities (${vulns.length})</div>`;
+                vulns.forEach((v, i) => {
+                    const sev = v.severity || 'info';
+                    html += `
+        <div class="vuln-card ${sev}" style="animation-delay:${i * 0.08}s">
+          <div class="vuln-header">
+            <div>
+              <div class="vuln-title">${esc(v.title || 'Vulnerability')}</div>
+              <div class="vuln-id">${esc(v.id || '')} · ${sev.toUpperCase()} ${v.cwe ? '· ' + v.cwe : ''}</div>
+            </div>
+            <span class="sev-pill ${sev}" style="flex-shrink:0">${sevEmoji(sev)} ${sevEn(sev)}</span>
+          </div>
+          <div class="vuln-desc">${esc(v.description || '')}</div>
+          ${v.line_hint ? `<div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.4rem;direction:ltr">📍 ${esc(v.line_hint)}</div>` : ''}
+          ${v.recommendation ? `
+            <div class="vuln-fix">
+              <div class="vuln-fix-label">💡 Recommendation:</div>
+              ${esc(v.recommendation)}
+            </div>` : ''}
+        </div>`;
+                });
+            }
+
+            // Gas optimizations
+            if (gas.length > 0) {
+                html += `<div class="section-title" style="margin-top:0.5rem">Gas Optimizations</div>`;
+                gas.forEach(g => {
+                    const sav = g.estimated_savings || 'low';
+                    const savEn = { high: 'High', medium: 'Medium', low: 'Low' }[sav] || sav;
+                    html += `
+        <div class="opt-card">
+          <div class="opt-title"><span class="savings-badge ${sav}">${savEn}</span> ${esc(g.title || '')}</div>
+          <div class="opt-desc">${esc(g.description || '')}</div>
+        </div>`;
+                });
+            }
+
+            // Best practices
+            if (bps.length > 0) {
+                html += `<div class="section-title" style="margin-top:0.5rem">Best Practices</div>`;
+                bps.forEach(b => {
+                    const icon = b.status === 'pass' ? '✅' : b.status === 'fail' ? '❌' : '⚠️';
+                    html += `
+        <div class="bp-card">
+          <span class="bp-icon">${icon}</span>
+          <span class="bp-title">${esc(b.title || '')}</span>
+          <span class="bp-note">${esc(b.note || '')}</span>
+        </div>`;
+                });
+            }
+
+            // Tx hash
+            if (audit.payment_hash) {
+                html += `
+      <div class="tx-row">
+        🔗 <a class="tx-link" href="https://sepolia.basescan.org/tx/${audit.payment_hash}" target="_blank">
+          ${audit.payment_hash.slice(0, 10)}…${audit.payment_hash.slice(-8)}
+        </a>
+      </div>`;
+            }
+
+            c.innerHTML = html;
+        }
+
+        /* ── Helpers ── */
+        function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function sevEmoji(s) { return { critical: '🔴', high: '🟠', medium: '🟡', low: '🔵', info: '⚪' }[s] || '⚪'; }
+        function sevEn(s) { return { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' }[s] || s; }
+    </script>
+</body>
+
+</html>
