@@ -69,21 +69,42 @@ def audit():
         return jsonify({"success": False, "error": "SDK not initialized. Set OG_PRIVATE_KEY."}), 500
 
     try:
-        p = "Audit this Solidity contract. Return JSON structure: {summary, risk_score, vulnerabilities:[{title, severity, description, recommendation}]}"
+        p = "Audit this Solidity contract. Return ONLY valid JSON with keys: {summary, risk_score, vulnerabilities: [{title, severity, description, recommendation}]}. No other text."
         result = client.llm.chat(
             model=og.TEE_LLM.GEMINI_2_0_FLASH,
             messages=[{"role": "system", "content": p}, {"role": "user", "content": code}],
+            max_tokens=2048,
+            temperature=0.1,
             x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
         )
         
-        raw_output = result.chat_output.get("content", "")
-        # Clean JSON
-        if "```json" in raw_output: raw_output = raw_output.split("```json")[1].split("```")[0]
-        elif "```" in raw_output: raw_output = raw_output.split("```")[1].split("```")[0]
+        raw_output = result.chat_output.get("content", "").strip()
         
-        parsed = json.loads(raw_output.strip())
-        parsed["tx_hash"] = getattr(result, "payment_hash", None)
+        # Robust JSON extraction
+        clean_json = raw_output
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0]
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0]
+            
+        clean_json = clean_json.strip()
         
+        try:
+            parsed = json.loads(clean_json)
+        except json.JSONDecodeError:
+            # Try to fix truncated JSON if possible or return raw with error
+            import re
+            # Simple attempt to find the first { and last }
+            match = re.search(r'(\{.*\})', clean_json, re.DOTALL)
+            if match:
+                try:
+                    parsed = json.loads(match.group(1))
+                except:
+                    raise Exception("AI returned malformed JSON. Please try again.")
+            else:
+                raise Exception("Could not find valid JSON in AI response.")
+
+        parsed["payment_hash"] = getattr(result, "payment_hash", None)
         return jsonify({"success": True, "audit": parsed})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
