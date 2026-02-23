@@ -93,8 +93,11 @@ JSON Structure:
   ]
 }
 
-Keep descriptions concise (max 2 sentences each). Max 5 vulnerabilities.
-All text and descriptions MUST be in English."""
+CRITICAL RULES:
+- Keep ALL descriptions to 1 sentence max.
+- Maximum 3 vulnerabilities, 2 gas optimizations, 3 best practices.
+- Keep the total response under 800 tokens.
+- All text MUST be in English."""
 
 # Store audit history in memory
 audit_history = []
@@ -191,22 +194,21 @@ def audit():
         {"role": "user",   "content": f"Audit this Solidity contract:\n\n{code}"}
     ]
 
-    try:
+    def try_audit(attempt=1):
+        """Try to get a valid audit response. Retries once on failure."""
         result = client.llm.chat(
             model=ACTIVE_MODEL,
             messages=messages,
-            max_tokens=1000,
+            max_tokens=2000,
             temperature=0.1,
             x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
         )
 
-        raw   = (result.chat_output or {}).get("content", "") or ""
+        raw = (result.chat_output or {}).get("content", "") or ""
         phash = getattr(result, "payment_hash", None)
 
-        # Parse JSON from response - with robust extraction
+        # Clean response
         s = raw.strip()
-
-        # Remove markdown code fences if present
         if "```json" in s:
             s = s.split("```json")[1].split("```")[0]
         elif "```" in s:
@@ -215,43 +217,48 @@ def audit():
                 s = parts[1]
                 if s.startswith("json"):
                     s = s[4:]
-
         s = s.strip()
 
-        # Try normal parsing first
-        parsed = None
+        # Try parsing
         try:
-            parsed = json.loads(s)
+            return json.loads(s), phash, True
         except json.JSONDecodeError:
-            # Try repairing truncated JSON
+            pass
+
+        # Try repairing
+        try:
+            return json.loads(repair_json(s)), phash, True
+        except:
+            pass
+
+        # Try regex extraction
+        match = re.search(r'(\{.*)', s, re.DOTALL)
+        if match:
             try:
-                repaired = repair_json(s)
-                parsed = json.loads(repaired)
+                return json.loads(repair_json(match.group(1))), phash, True
             except:
-                # Try regex extraction as last resort
-                match = re.search(r'(\{.*)', s, re.DOTALL)
-                if match:
-                    try:
-                        repaired2 = repair_json(match.group(1))
-                        parsed = json.loads(repaired2)
-                    except Exception as e2:
-                        parsed = {
-                            "summary": "AI response was truncated. Partial analysis available.",
-                            "risk_score": 50,
-                            "vulnerabilities": [],
-                            "gas_optimizations": [],
-                            "best_practices": [],
-                            "raw_response": raw[:500]
-                        }
-                else:
-                    parsed = {
-                        "summary": "Could not parse AI response.",
-                        "risk_score": 50,
-                        "vulnerabilities": [],
-                        "gas_optimizations": [],
-                        "best_practices": [],
-                        "raw_response": raw[:500]
-                    }
+                pass
+
+        # Return raw if all fails
+        return None, phash, False
+
+    try:
+        # First attempt
+        parsed, phash, success = try_audit(attempt=1)
+
+        # Retry once if first attempt failed
+        if not success:
+            parsed, phash, success = try_audit(attempt=2)
+
+        # If still no valid JSON, use fallback
+        if not success or parsed is None:
+            parsed = {
+                "summary": "AI response was truncated. Please try again or use a shorter code snippet.",
+                "risk_score": 50,
+                "vulnerabilities": [],
+                "gas_optimizations": [],
+                "best_practices": [],
+            }
 
         # Add metadata
         parsed["audit_id"]     = audit_id
