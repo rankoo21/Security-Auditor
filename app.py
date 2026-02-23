@@ -66,22 +66,33 @@ def get_client():
             print(f"Client init error: {e}")
     return _client
 
-# ── Audit system prompt (English) ───────────────────────────────────
-AUDIT_SYSTEM_PROMPT = """You are an expert Solidity auditor. Analyze the provided code for security vulnerabilities.
+# ── Audit system prompt (Professional Auditor) ──────────────────────
+AUDIT_SYSTEM_PROMPT = """You are a professional senior Solidity smart contract security auditor.
 You MUST respond with valid JSON ONLY. No markdown, no code fences, no extra text.
+
+ANALYSIS RULES:
+1. VERSION AWARENESS: Detect pragma version. If >=0.8.0, do NOT flag overflow/underflow. SafeMath is unnecessary.
+2. EXPLOITABLE ONLY: Report only real exploitable vulnerabilities with technical justification (exploit scenario, impact, likelihood).
+3. REENTRANCY: Only flag if state updates occur AFTER external call. If CEI pattern is followed, state "No reentrancy detected."
+4. ACCESS CONTROL: Only flag missing access control on sensitive state-changing functions.
+5. FALSE POSITIVE AVOIDANCE: Do NOT hallucinate issues. Every finding must have a realistic attack path.
+6. EVENTS: Missing events are LOW/informational severity only.
+7. GAS: Gas optimizations are informational only, never vulnerabilities.
+
+SEVERITY LEVELS: critical, high, medium, low, info
 
 JSON Structure:
 {
-  "summary": "1-2 sentences assessment in English",
+  "summary": "1-2 sentences professional assessment",
   "risk_score": 0,
   "vulnerabilities": [
     {
       "id": "V-001",
       "title": "Vulnerability Name",
-      "severity": "critical|high|medium|low",
-      "description": "Detailed description of the vulnerability",
-      "line_hint": "Affected line",
-      "recommendation": "Recommendation to fix it",
+      "severity": "critical|high|medium|low|info",
+      "description": "Technical explanation with exploit scenario",
+      "line_hint": "Affected line or function",
+      "recommendation": "Specific fix recommendation",
       "cwe": "CWE-XXX"
     }
   ],
@@ -93,11 +104,12 @@ JSON Structure:
   ]
 }
 
-CRITICAL RULES:
-- Keep ALL descriptions to 1 sentence max.
-- Maximum 3 vulnerabilities, 2 gas optimizations, 3 best practices.
-- Keep the total response under 800 tokens.
-- All text MUST be in English."""
+CRITICAL OUTPUT RULES:
+- Max 5 vulnerabilities, 3 gas optimizations, 4 best practices.
+- Keep descriptions concise (1-2 sentences max).
+- Keep total response under 900 tokens.
+- Clearly state if no critical vulnerabilities exist.
+- All text in English."""
 
 # Store audit history in memory
 audit_history = []
