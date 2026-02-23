@@ -57,28 +57,39 @@ def status():
     })
 
 def repair_json(s):
-    """Simple helper to close truncated JSON strings/objects."""
+    """Robust helper to close truncated JSON strings/objects using state machine."""
     s = s.strip()
-    # Count open/close braces
-    open_b = s.count('{')
-    close_b = s.count('}')
-    if open_b > close_b:
-        s += '}' * (open_b - close_b)
+    if not s: return "{}"
     
-    # Check if inside an array
-    open_a = s.count('[')
-    close_a = s.count(']')
-    if open_a > close_a:
-        # This is a bit complex, but usually it's inside a list of vulnerabilities
-        # We try to close the current object if needed, then close the array
-        if s.endswith('}') or s.strip().endswith('}'):
-            s += ']'
-        else:
-            s += '}]' # Close object and array
-            
-    # Final check: if still missing the root closing brace
-    if s.count('{') > s.count('}'):
-        s += '}'
+    in_string = False
+    escape = False
+    stack = []
+    
+    for char in s:
+        if escape:
+            escape = False
+            continue
+        if char == '\\':
+            escape = True
+            continue
+        if char == '"':
+            in_string = not in_string
+            continue
+        
+        if not in_string:
+            if char == '{': stack.append('}')
+            elif char == '[': stack.append(']')
+            elif char == '}':
+                if stack and stack[-1] == '}': stack.pop()
+            elif char == ']':
+                if stack and stack[-1] == ']': stack.pop()
+    
+    if in_string:
+        if s.endswith('\\'): s = s[:-1]
+        s += '"'
+    
+    while stack:
+        s += stack.pop()
         
     return s
 
@@ -131,10 +142,12 @@ def audit():
                 if match:
                     try:
                         parsed = json.loads(repair_json(match.group(1)))
-                    except:
-                        raise Exception("AI response truncated too early. Please try a smaller code snippet.")
+                    except Exception as e2:
+                        raise Exception(f"AI response repair failed: {e2}")
                 else:
-                    raise Exception("Invalid response format from AI.")
+                    # Final fallback: if no JSON found, show a snippet
+                    snippet = clean_json[:100] + "..."
+                    raise Exception(f"Invalid response from AI (no JSON found). Start of response: {snippet}")
 
         parsed["payment_hash"] = getattr(result, "payment_hash", None)
         return jsonify({"success": True, "audit": parsed})
