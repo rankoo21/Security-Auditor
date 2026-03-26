@@ -1,41 +1,9 @@
 """
-Auditor - Powered by OpenGradient SDK
-Uses direct IP (3.15.214.21) to bypass DNS issue with llm.opengradient.ai
+Auditor - Powered by OpenGradient SDK 0.9.3
+Uses direct IP (3.15.214.21) natively bypassing SSL checks.
 """
-import os, json, threading, time, hashlib, re, ssl
-
-# ── SSL Fix: must happen BEFORE any imports that touch httpx/ssl ─────
-# Disable all SSL verification globally
-os.environ["PYTHONHTTPSVERIFY"] = "0"
-os.environ["CURL_CA_BUNDLE"] = ""
-os.environ["REQUESTS_CA_BUNDLE"] = ""
-
-ssl._create_default_https_context = ssl._create_unverified_context
-
-try:
-    import urllib3
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-except Exception:
-    pass
-
-try:
-    import httpx
-    import httpx._config as _hcfg
-    # Force SSL=False in all new httpx clients by patching the default
-    _orig_async_init = httpx.AsyncClient.__init__
-    def _async_init_nossl(self, *args, **kwargs):
-        kwargs.setdefault("verify", False)
-        _orig_async_init(self, *args, **kwargs)
-    httpx.AsyncClient.__init__ = _async_init_nossl
-
-    _orig_sync_init = httpx.Client.__init__
-    def _sync_init_nossl(self, *args, **kwargs):
-        kwargs.setdefault("verify", False)
-        _orig_sync_init(self, *args, **kwargs)
-    httpx.Client.__init__ = _sync_init_nossl
-    print("[SSL] httpx patched: verify=False globally")
-except Exception as _e:
-    print(f"[SSL] httpx patch skipped: {_e}")
+import os, json, threading, time, hashlib, re
+import asyncio
 
 try:
     from dotenv import load_dotenv
@@ -69,8 +37,7 @@ if PRIVATE_KEY:
     if not PRIVATE_KEY.startswith("0x") and len(PRIVATE_KEY) == 64:
         PRIVATE_KEY = "0x" + PRIVATE_KEY
 
-# Direct IP workaround: llm.opengradient.ai DNS is broken,
-# using IP from OpenGradient community (Trungkts)
+# Direct IP workaround natively supported by 0.9.3
 OG_LLM_SERVER = "https://3.15.214.21"
 
 w3b = Web3(Web3.HTTPProvider("https://sepolia.base.org"))
@@ -101,103 +68,56 @@ def get_opg_balance():
     except:
         return 0.0
 
-# Models — keys must match the 'value' attributes in the frontend dropdown
 def _m(name, fallback=None):
     """Safely get a TEE_LLM enum member by name."""
     val = getattr(og.TEE_LLM, name, None)
     if val is not None:
         return val
     if fallback:
-        return getattr(og.TEE_LLM, fallback, og.TEE_LLM.GEMINI_2_0_FLASH)
-    return og.TEE_LLM.GEMINI_2_0_FLASH
+        # If fallback is provided, let's just attempt it
+        fallback_val = getattr(og.TEE_LLM, fallback, None)
+        if fallback_val:
+            return fallback_val
+    return getattr(og.TEE_LLM, "GEMINI_2_5_FLASH", None)
 
 MODELS = {
-    # Legacy keys (kept for backward compat)
-    "GEMINI_2_0_FLASH":      _m("GEMINI_2_0_FLASH"),
-    "GEMINI_1_5_FLASH":      _m("GEMINI_1_5_FLASH",      "GEMINI_2_0_FLASH"),
-    "GPT_4O":                _m("GPT_4O",                "GPT_4_1_2025_04_14"),
-    "GPT_4_1_2025_04_14":    _m("GPT_4_1_2025_04_14"),
-    "CLAUDE_3_7_SONNET":     _m("CLAUDE_3_7_SONNET",     "GEMINI_2_0_FLASH"),
+    # Legacy keys
+    "GEMINI_2_0_FLASH":      _m("GEMINI_2_5_FLASH"),
+    "GEMINI_1_5_FLASH":      _m("GEMINI_1_5_FLASH",      "GEMINI_2_5_FLASH"),
+    "GPT_4O":                _m("GPT_4_1_2025_04_14",    "GEMINI_2_5_FLASH"),
+    "GPT_4_1_2025_04_14":    _m("GPT_4_1_2025_04_14",    "GEMINI_2_5_FLASH"),
+    "CLAUDE_3_7_SONNET":     _m("CLAUDE_SONNET_4_5",     "GEMINI_2_5_FLASH"),
     # Front-end dropdown values
-    "GEMINI_2_5_FLASH":      _m("GEMINI_2_5_FLASH",      "GEMINI_2_0_FLASH"),
+    "GEMINI_2_5_FLASH":      _m("GEMINI_2_5_FLASH",      "GEMINI_2_5_FLASH"),
     "GEMINI_2_5_PRO":        _m("GEMINI_2_5_PRO",        "GEMINI_2_5_FLASH"),
     "GEMINI_3_FLASH":        _m("GEMINI_3_FLASH",        "GEMINI_2_5_FLASH"),
     "GPT_5_MINI":            _m("GPT_5_MINI",            "GPT_4_1_2025_04_14"),
     "GPT_5":                 _m("GPT_5",                 "GPT_4_1_2025_04_14"),
     "O4_MINI":               _m("O4_MINI",               "GPT_4_1_2025_04_14"),
-    "CLAUDE_HAIKU_4_5":      _m("CLAUDE_HAIKU_4_5",      "GEMINI_2_0_FLASH"),
-    "CLAUDE_SONNET_4_5":     _m("CLAUDE_SONNET_4_5",     "GEMINI_2_0_FLASH"),
-    "GROK_4_FAST":           _m("GROK_4_FAST",           "GEMINI_2_0_FLASH"),
+    "CLAUDE_HAIKU_4_5":      _m("CLAUDE_HAIKU_4_5",      "GEMINI_2_5_FLASH"),
+    "CLAUDE_SONNET_4_5":     _m("CLAUDE_SONNET_4_5",     "GEMINI_2_5_FLASH"),
+    "GROK_4_FAST":           _m("GROK_4_FAST",           "GEMINI_2_5_FLASH"),
 }
 
-ACTIVE_MODEL = og.TEE_LLM.GEMINI_2_0_FLASH
-ACTIVE_MODEL_NAME = "GEMINI_2_0_FLASH"
+ACTIVE_MODEL = _m("GEMINI_2_5_FLASH")
+ACTIVE_MODEL_NAME = "GEMINI_2_5_FLASH"
 
-# ── Patched Client: skip SSL verification for direct IP ─────────────
-def _deep_patch_ssl(client):
-    """Deep-patch the og.Client's internal httpx transports to skip SSL verify."""
-    try:
-        import asyncio
-
-        async def _patch():
-            llm = client.llm
-            # Try patching the underlying x402 httpx clients via their transport
-            for attr in ["_request_client", "_stream_client"]:
-                c = getattr(llm, attr, None)
-                if c and hasattr(c, "_transport"):
-                    try:
-                        c._transport._pool._ssl_context.check_hostname = False
-                        c._transport._pool._ssl_context.verify_mode = ssl.CERT_NONE
-                        print(f"[SSL] Patched {attr}._transport ssl_context")
-                    except Exception as _ex:
-                        print(f"[SSL] Transport patch failed for {attr}: {_ex}")
-
-            # Also try rebuilding via x402HttpxClient
-            try:
-                from x402v2.http.clients import x402HttpxClient as _x402
-                if llm._request_client_ctx:
-                    await llm._request_client_ctx.__aexit__(None, None, None)
-                if llm._stream_client_ctx:
-                    await llm._stream_client_ctx.__aexit__(None, None, None)
-                llm._request_client_ctx = _x402(llm._x402_client, verify=False)
-                llm._request_client = await llm._request_client_ctx.__aenter__()
-                llm._stream_client_ctx = _x402(llm._x402_client, verify=False)
-                llm._stream_client = await llm._stream_client_ctx.__aenter__()
-                print("[SSL] Rebuilt x402HttpxClient with verify=False")
-            except Exception as _ex2:
-                print(f"[SSL] x402 rebuild failed: {_ex2}")
-
-        client.llm._run_coroutine(_patch())
-    except Exception as e:
-        print(f"[SSL] deep_patch_ssl error: {e}")
-
-def make_client():
-    """Create og.Client. First tries direct IP with SSL bypass, falls back to default."""
+def make_llm():
+    """Create og.LLM for 0.9.3"""
     if not PRIVATE_KEY:
         return None
-
-    # Attempt 1: Direct IP + SSL bypass
     try:
-        client = og.Client(
+        # OpenGradient 0.9.3 natively bypasses SSL if llm_server_url is set.
+        llm = og.LLM(
             private_key=PRIVATE_KEY,
-            og_llm_server_url=OG_LLM_SERVER,
-            og_llm_streaming_server_url=OG_LLM_SERVER
+            llm_server_url=OG_LLM_SERVER
         )
-        _deep_patch_ssl(client)
-        return client
+        return llm
     except Exception as e:
-        print(f"[Client] Direct IP init error: {e}")
-
-    # Attempt 2: Default URL (DNS might work now)
-    try:
-        print("[Client] Trying default og.Client() without IP override...")
-        client = og.Client(private_key=PRIVATE_KEY)
-        return client
-    except Exception as e:
-        print(f"[Client] Default init error: {e}")
+        print(f"[LLM] Init error: {e}")
         return None
 
-# ── System prompt ───────────────────────────────────────────────────
+# ── System prompt ──
 AUDIT_SYSTEM_PROMPT = """You are a professional senior Solidity smart contract security auditor.
 You MUST respond with valid JSON ONLY. No markdown, no code fences, no extra text.
 
@@ -301,7 +221,7 @@ def parse_llm_json(raw):
             pass
     return None
 
-# ── Flask routes ────────────────────────────────────────────────────
+# ── Flask routes ──
 
 @app.after_request
 def cors_headers(r):
@@ -325,7 +245,7 @@ def status():
 
 llm_lock = threading.Lock()
 MAX_RETRIES = 3
-RETRY_DELAY = 2
+RETRY_DELAY = 1
 
 @app.route("/api/audit", methods=["POST","OPTIONS"])
 def audit():
@@ -334,7 +254,7 @@ def audit():
 
     data = request.get_json(force=True) or {}
     code = data.get("code", "").strip()
-    req_model = data.get("model", "GEMINI_2_0_FLASH")
+    req_model = data.get("model", "GEMINI_2_5_FLASH")
 
     if not code:
         return jsonify({"success": False, "error": "No code provided"}), 400
@@ -355,24 +275,32 @@ def audit():
     phash = None
 
     for attempt in range(1, MAX_RETRIES + 1):
-        client = None
         try:
-            client = make_client()
-            if not client:
+            llm = make_llm()
+            if not llm:
                 return jsonify({"success": False, "error": "SDK not initialized. Check OG_PRIVATE_KEY."}), 500
 
-            print(f"[Audit] Attempt {attempt}/{MAX_RETRIES} with {target_model_name} via {OG_LLM_SERVER}...")
+            print(f"[Audit] Attempt {attempt}/{MAX_RETRIES} with {target_model_name}...")
 
             with llm_lock:
-                result = client.llm.chat(
+                # 0.9.3 requires asyncio.run since chat is an async function now.
+                result = asyncio.run(llm.chat(
                     model=target_model,
                     messages=messages,
                     max_tokens=2000,
                     temperature=0.1,
-                    x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
-                )
+                    x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
+                ))
 
-            raw = (result.chat_output or {}).get("content", "") or ""
+            # Safely extract response text in 0.9.3
+            raw_output = getattr(result, "chat_output", None)
+            if isinstance(raw_output, dict):
+                raw = raw_output.get("content", "")
+            elif hasattr(raw_output, "content"):
+                raw = getattr(raw_output, "content")
+            else:
+                raw = str(raw_output) or ""
+                
             phash = getattr(result, "payment_hash", None)
             parsed = parse_llm_json(raw)
 
@@ -381,18 +309,11 @@ def audit():
                 break
             else:
                 print(f"[Audit] Attempt {attempt}: got response but JSON parse failed")
-                last_error = "LLM response could not be parsed as JSON"
+                last_error = "LLM response could not be parsed as JSON: " + str(raw)[:50]
 
         except Exception as e:
             last_error = str(e)
             print(f"[Audit] Attempt {attempt} error: {last_error}")
-
-        finally:
-            if client:
-                try:
-                    client.close()
-                except:
-                    pass
 
         if attempt < MAX_RETRIES:
             delay = RETRY_DELAY * attempt
