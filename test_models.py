@@ -1,45 +1,44 @@
-"""Test all available models to find one that works."""
-import os, opengradient as og
+import os, asyncio, opengradient as og
+from dotenv import load_dotenv
 
-private_key = os.environ.get("OG_PRIVATE_KEY", "")
-if not private_key:
-    from dotenv import load_dotenv
-    load_dotenv()
-    private_key = os.environ.get("OG_PRIVATE_KEY", "")
+load_dotenv()
 
-client = og.Client(private_key=private_key)
+PRIVATE_KEY = os.environ.get("OG_PRIVATE_KEY")
+OG_LLM_SERVER = "https://3.15.214.21"
 
-# Try all known models
-models_to_try = []
-for attr in dir(og.TEE_LLM):
-    if not attr.startswith("_"):
+async def test_all():
+    if not PRIVATE_KEY:
+        print("No private key")
+        return
+
+    llm = og.LLM(private_key=PRIVATE_KEY, llm_server_url=OG_LLM_SERVER)
+    
+    models = []
+    for attr in dir(og.TEE_LLM):
+        if not attr.startswith("_"):
+            try:
+                models.append((attr, getattr(og.TEE_LLM, attr)))
+            except: pass
+
+    print(f"Testing {len(models)} models with balance of 0.1841 OPG...")
+    
+    for name, model in models:
+        print(f"Testing {name}... ", end="", flush=True)
         try:
-            models_to_try.append((attr, getattr(og.TEE_LLM, attr)))
-        except:
-            pass
+            r = await llm.chat(
+                model=model,
+                messages=[{"role": "user", "content": "HI"}],
+                max_tokens=2,
+                temperature=0,
+                x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
+            )
+            print("OK!")
+        except Exception as e:
+            err = str(e)
+            if "402" in err:
+                print("FAIL: 402 Payment Required")
+            else:
+                print(f"FAIL: {err[:50]}...")
 
-print(f"Found {len(models_to_try)} models to test:\n")
-
-for name, model in models_to_try:
-    print(f"  {name}... ", end="", flush=True)
-    try:
-        r = client.llm.chat(
-            model=model,
-            messages=[
-                {"role": "system", "content": "Reply OK"},
-                {"role": "user", "content": "test"}
-            ],
-            max_tokens=10,
-            temperature=0,
-            x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
-        )
-        content = (r.chat_output or {}).get("content", "")
-        if content:
-            print(f"OK! -> {content.strip()[:30]}")
-        else:
-            print(f"EMPTY response")
-    except Exception as e:
-        err = str(e)[:80]
-        print(f"FAIL: {err}")
-
-print("\nDone!")
+if __name__ == "__main__":
+    asyncio.run(test_all())

@@ -37,8 +37,7 @@ if PRIVATE_KEY:
     if not PRIVATE_KEY.startswith("0x") and len(PRIVATE_KEY) == 64:
         PRIVATE_KEY = "0x" + PRIVATE_KEY
 
-# Direct IP workaround natively supported by 0.9.3
-OG_LLM_SERVER = "https://3.15.214.21"
+# OpenGradient 0.9.4 handles gateway discovery automatically.
 
 w3b = Web3(Web3.HTTPProvider("https://sepolia.base.org"))
 
@@ -94,24 +93,23 @@ MODELS = {
     "GPT_5_MINI":            _m("GPT_5_MINI",            "GPT_4_1_2025_04_14"),
     "GPT_5":                 _m("GPT_5",                 "GPT_4_1_2025_04_14"),
     "O4_MINI":               _m("O4_MINI",               "GPT_4_1_2025_04_14"),
+    "GEMINI_2_5_FLASH_LITE": _m("GEMINI_2_5_FLASH_LITE", "GEMINI_2_5_FLASH"),
     "CLAUDE_HAIKU_4_5":      _m("CLAUDE_HAIKU_4_5",      "GEMINI_2_5_FLASH"),
     "CLAUDE_SONNET_4_5":     _m("CLAUDE_SONNET_4_5",     "GEMINI_2_5_FLASH"),
+    "CLAUDE_SONNET_4_6":     _m("CLAUDE_SONNET_4_6",     "GEMINI_2_5_FLASH"),
     "GROK_4_FAST":           _m("GROK_4_FAST",           "GEMINI_2_5_FLASH"),
 }
 
-ACTIVE_MODEL = _m("GEMINI_2_5_FLASH")
-ACTIVE_MODEL_NAME = "GEMINI_2_5_FLASH"
+ACTIVE_MODEL = _m("GEMINI_2_5_FLASH_LITE")
+ACTIVE_MODEL_NAME = "GEMINI_2_5_FLASH_LITE"
 
 def make_llm():
     """Create og.LLM for 0.9.3"""
     if not PRIVATE_KEY:
         return None
     try:
-        # OpenGradient 0.9.3 natively bypasses SSL if llm_server_url is set.
-        llm = og.LLM(
-            private_key=PRIVATE_KEY,
-            llm_server_url=OG_LLM_SERVER
-        )
+        # OpenGradient 0.9.4 discovery
+        llm = og.LLM(private_key=PRIVATE_KEY)
         return llm
     except Exception as e:
         print(f"[LLM] Init error: {e}")
@@ -156,11 +154,10 @@ JSON Structure:
 }
 
 CRITICAL OUTPUT RULES:
-- Max 5 vulnerabilities, 3 gas optimizations, 4 best practices.
-- Keep descriptions concise (1-2 sentences max).
-- Keep total response under 900 tokens.
-- Clearly state if no critical vulnerabilities exist.
-- All text in English."""
+- Keep response concise (max 800 tokens).
+- Use valid JSON ONLY.
+- Focus ONLY on critical vulnerabilities.
+- Response in English."""
 
 audit_history = []
 
@@ -287,8 +284,8 @@ def audit():
                 result = asyncio.run(llm.chat(
                     model=target_model,
                     messages=messages,
-                    max_tokens=2000,
-                    temperature=0.1,
+                    max_tokens=1000,
+                    temperature=0.7,
                     x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
                 ))
 

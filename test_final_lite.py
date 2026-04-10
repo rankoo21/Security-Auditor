@@ -1,4 +1,4 @@
-import os, json, asyncio, opengradient as og
+import os, asyncio, opengradient as og
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,42 +13,35 @@ messages = [
     },
     {
         "role": "user",
-        "content": "Audit: pragma solidity ^0.8.0; contract T { address owner; constructor(){owner=msg.sender;} function withdraw() public { payable(msg.sender).transfer(address(this).balance); } }"
+        "content": "Audit: pragma solidity ^0.8.0; contract T { }"
     }
 ]
 
-async def run_test(name, model):
-    print(f"--- Testing {name} ---")
+async def run_test():
+    if not PRIVATE_KEY:
+        print("Set OG_PRIVATE_KEY first!")
+        return
+
+    print("Testing GEMINI_2_5_FLASH_LITE (The Cheapest)...")
     try:
         llm = og.LLM(private_key=PRIVATE_KEY, llm_server_url=OG_LLM_SERVER)
         r = await llm.chat(
-            model=model,
+            model=og.TEE_LLM.GEMINI_2_5_FLASH_LITE,
             messages=messages,
             max_tokens=600,
             temperature=0.1,
             x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
         )
-        print(f"SUCCESS!")
+        print("SUCCESS!")
         # Extra chat output content
         raw = getattr(r, "chat_output", None)
         if isinstance(raw, dict): content = raw.get("content", "")
         elif hasattr(raw, "content"): content = getattr(raw, "content")
         else: content = str(raw)
         
-        print(f"Response: {content[:300]}...")
-        print(f"Payment hash: {getattr(r, 'payment_hash', 'None')}")
+        print(f"Response: {content}")
     except Exception as e:
         print(f"FAIL: {e}")
-    print("\n")
-
-async def main():
-    if not PRIVATE_KEY:
-        print("Set OG_PRIVATE_KEY first!")
-        return
-        
-    await run_test("CLAUDE_SONNET_4_6", og.TEE_LLM.CLAUDE_SONNET_4_6)
-    await run_test("GEMINI_2_5_FLASH", og.TEE_LLM.GEMINI_2_5_FLASH)
-    await run_test("GPT_4_1_2025_04_14", og.TEE_LLM.GPT_4_1_2025_04_14)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(run_test())

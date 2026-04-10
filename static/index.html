@@ -897,6 +897,28 @@
                         <button class="example-btn" onclick="loadExample('vulnerable')">Vulnerable Code</button>
                         <button class="example-btn" onclick="loadExample('reentrancy')">Reentrancy</button>
                     </div>
+
+                    <!-- Advanced Model Selector -->
+                    <div class="examples-row" style="margin-bottom: 12px;">
+                        <span style="font-size: 0.72rem; color: var(--muted); align-self: center;">Select TEE
+                            Model:</span>
+                        <select id="modelSelect" class="example-btn"
+                            style="background: rgba(59, 130, 246, 0.1); border-color: var(--border); color: var(--text); padding-right: 1.5rem; appearance: auto;">
+                            <option value="GEMINI_2_5_FLASH_LITE" selected>Gemini 2.5 Flash Lite (Cheapest)</option>
+                            <option value="GEMINI_2_5_FLASH">Gemini 2.5 Flash</option>
+                            <option value="GEMINI_2_5_PRO">Gemini 2.5 Pro</option>
+                            <option value="GEMINI_3_FLASH">Gemini 3.0 Flash</option>
+                            <option value="GPT_4_1_2025_04_14">GPT-4.1 (2025-04-14)</option>
+                            <option value="GPT_5_MINI">GPT-5 Mini</option>
+                            <option value="GPT_5">GPT-5</option>
+                            <option value="O4_MINI">O4 Mini</option>
+                            <option value="CLAUDE_HAIKU_4_5">Claude Haiku 4.5</option>
+                            <option value="CLAUDE_SONNET_4_5">Claude Sonnet 4.5</option>
+                            <option value="CLAUDE_SONNET_4_6">Claude Sonnet 4.6</option>
+                            <option value="GROK_4_FAST">Grok 4 Fast</option>
+                        </select>
+                    </div>
+
                     <textarea class="code-area" id="codeInput" placeholder="Paste your Solidity contract here..."
                         spellcheck="false"></textarea>
                     <div class="code-footer">
@@ -1099,6 +1121,8 @@ contract ReentrancyExample {
         /* ── Run audit ── */
         async function runAudit() {
             const code = codeInput.value.trim();
+            const model = document.getElementById('modelSelect').value;
+
             if (!code) { showToast('Please paste Solidity code first'); return; }
 
             const btn = document.getElementById('auditBtn');
@@ -1111,7 +1135,7 @@ contract ReentrancyExample {
                 const resp = await fetch('/api/audit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code })
+                    body: JSON.stringify({ code, model })
                 });
                 const data = await resp.json();
 
