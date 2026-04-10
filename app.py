@@ -380,6 +380,48 @@ def audit():
 def history():
     return jsonify({"audits": list(reversed(audit_history[-20:]))})
 
+@app.route("/api/debug")
+def debug():
+    import sys, platform, traceback
+    info = {
+        "python": sys.version,
+        "platform": platform.platform(),
+        "og_version": getattr(og, "__version__", "unknown"),
+        "private_key_set": bool(PRIVATE_KEY),
+        "private_key_len": len(PRIVATE_KEY) if PRIVATE_KEY else 0,
+        "wallet": WALLET,
+        "nest_asyncio": False,
+        "llm_init": None,
+        "llm_error": None,
+        "asyncio_test": None,
+        "env_vars": [k for k in os.environ if "OG" in k or "PRIVATE" in k or "PORT" in k]
+    }
+    try:
+        import nest_asyncio
+        info["nest_asyncio"] = True
+    except:
+        pass
+    try:
+        llm = og.LLM(private_key=PRIVATE_KEY)
+        info["llm_init"] = "OK"
+    except Exception as e:
+        info["llm_init"] = "FAIL"
+        info["llm_error"] = str(e)
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.close()
+        info["asyncio_test"] = "OK"
+    except Exception as e:
+        info["asyncio_test"] = str(e)
+    try:
+        import opengradient as _og
+        members = [x for x in dir(_og.TEE_LLM) if not x.startswith("_")]
+        info["tee_llm_members"] = members
+    except Exception as e:
+        info["tee_llm_members"] = str(e)
+    return jsonify(info)
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
