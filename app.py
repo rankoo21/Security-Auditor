@@ -4,6 +4,11 @@ Uses direct IP (3.15.214.21) natively bypassing SSL checks.
 """
 import os, json, threading, time, hashlib, re
 import asyncio
+try:
+    import nest_asyncio
+    nest_asyncio.apply()
+except ImportError:
+    pass
 
 try:
     from dotenv import load_dotenv
@@ -280,14 +285,26 @@ def audit():
             print(f"[Audit] Attempt {attempt}/{MAX_RETRIES} with {target_model_name}...")
 
             with llm_lock:
-                # 0.9.3 requires asyncio.run since chat is an async function now.
-                result = asyncio.run(llm.chat(
-                    model=target_model,
-                    messages=messages,
-                    max_tokens=1000,
-                    temperature=0.7,
-                    x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
-                ))
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_closed():
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    result = loop.run_until_complete(llm.chat(
+                        model=target_model,
+                        messages=messages,
+                        max_tokens=1000,
+                        temperature=0.7,
+                        x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
+                    ))
+                except RuntimeError:
+                    result = asyncio.run(llm.chat(
+                        model=target_model,
+                        messages=messages,
+                        max_tokens=1000,
+                        temperature=0.7,
+                        x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
+                    ))
 
             # Safely extract response text in 0.9.3
             raw_output = getattr(result, "chat_output", None)
