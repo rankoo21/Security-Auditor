@@ -294,7 +294,7 @@ def audit():
                         model=target_model,
                         messages=messages,
                         max_tokens=1000,
-                        temperature=0.7,
+                        temperature=0.0,
                         x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
                     ))
                 except RuntimeError:
@@ -302,7 +302,7 @@ def audit():
                         model=target_model,
                         messages=messages,
                         max_tokens=1000,
-                        temperature=0.7,
+                        temperature=0.0,
                         x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
                     ))
 
