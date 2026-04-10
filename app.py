@@ -193,6 +193,33 @@ CRITICAL OUTPUT RULES:
 - Keep consistent formatting across responses.
 - Response in English."""
 
+# ── Re-evaluation prompt (second pass) ──
+REVIEW_SYSTEM_PROMPT = """You are a senior smart contract security auditor performing a SECOND-PASS REVIEW.
+You MUST respond with valid JSON ONLY. No markdown, no code fences, no extra text.
+
+You are given a previous audit report (as JSON) and the original Solidity source code.
+Your job is to RE-EVALUATE the report and fix any errors:
+
+CHECK FOR:
+1) FALSE POSITIVES: Remove any vulnerability that is not clearly exploitable.
+2) INCORRECT SEVERITY: Downgrade or upgrade severity based on these strict rules:
+   - critical = Direct fund drain or full contract takeover ONLY
+   - high = Strong exploit affecting funds or control
+   - medium = Logic flaw or indirect exploit
+   - low = Best practices (events, style)
+   - info = Gas or suggestions
+3) SOLIDITY VERSION VIOLATIONS:
+   - If pragma >= 0.8.0: REMOVE any overflow/underflow findings. REMOVE SafeMath recommendations.
+4) INCORRECT CLASSIFICATION:
+   - If CEI (Checks-Effects-Interactions) pattern is followed, reentrancy is SAFE, remove it
+   - require(success) is NOT redundant, do not flag it
+   - Gas optimizations are NOT vulnerabilities, move to gas_optimizations section
+5) RISK SCORE: Recalculate based on ACTUAL remaining vulnerabilities only.
+   - 0 = No issues, 1-25 = Low, 26-50 = Medium, 51-75 = High, 76-100 = Critical
+
+Return the CORRECTED JSON in the exact same structure. Keep valid entries unchanged.
+If no vulnerabilities remain, set risk_score to 0 and summary must include 'No critical vulnerabilities found'."""
+
 audit_history = []
 
 def repair_json(s):
@@ -362,6 +389,56 @@ def audit():
             delay = RETRY_DELAY * attempt
             print(f"[Audit] Waiting {delay}s before retry...")
             time.sleep(delay)
+
+    # ── Second pass: Re-evaluation ──
+    if parsed:
+        try:
+            print(f"[Audit] Running re-evaluation pass...")
+            review_messages = [
+                {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
+                {"role": "user", "content": f"Original Solidity code:\n\n{code}\n\nPrevious audit report:\n\n{json.dumps(parsed, indent=2)}\n\nRe-evaluate and return corrected JSON."}
+            ]
+
+            llm = make_llm()
+            if llm:
+                with llm_lock:
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_closed():
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                        review_result = loop.run_until_complete(llm.chat(
+                            model=target_model,
+                            messages=review_messages,
+                            max_tokens=1000,
+                            temperature=0.0,
+                            x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
+                        ))
+                    except RuntimeError:
+                        review_result = asyncio.run(llm.chat(
+                            model=target_model,
+                            messages=review_messages,
+                            max_tokens=1000,
+                            temperature=0.0,
+                            x402_settlement_mode=og.x402SettlementMode.BATCH_HASHED
+                        ))
+
+                review_output = getattr(review_result, "chat_output", None)
+                if isinstance(review_output, dict):
+                    review_raw = review_output.get("content", "")
+                elif hasattr(review_output, "content"):
+                    review_raw = getattr(review_output, "content")
+                else:
+                    review_raw = str(review_output) or ""
+
+                review_parsed = parse_llm_json(review_raw)
+                if review_parsed:
+                    print(f"[Audit] Re-evaluation SUCCESS — using corrected report")
+                    parsed = review_parsed
+                else:
+                    print(f"[Audit] Re-evaluation JSON parse failed — keeping original")
+        except Exception as e:
+            print(f"[Audit] Re-evaluation error (keeping original): {e}")
 
     # Build response
     try:
