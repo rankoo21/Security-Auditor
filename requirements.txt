@@ -1,8 +1,9 @@
 flask
 flask-cors
-opengradient==0.9.3
+opengradient==0.9.9
 web3==7.14.1
 python-dotenv
 gunicorn
 urllib3
 httpx
+nest_asyncio
